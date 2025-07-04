@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход в мессенджер</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="styles.css?v=1">
+  <style>
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    
+    .logo {
+      font-size: 48px;
+      color: #4e54c8;
+      margin-bottom: 20px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+    
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    
+    input:focus {
+      border-color: #4e54c8;
+      outline: none;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .footer {
+      margin-top: 20px;
+      color: #777;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">💬</div>
+    <h1>Stylish Messenger</h1>
+    
+    <div class="form-group">
+      <label for="username">Ваше имя</label>
+      <input type="text" id="username" placeholder="Введите ваше имя" value="Игрок">
+    </div>
+    
+    <div class="form-group">
+      <label for="room">Название комнаты</label>
+      <input type="text" id="room" placeholder="Введите название комнаты" value="Общий чат">
+    </div>
+    
+    <button class="btn" id="joinButton">Присоединиться</button>
+    
+    <div class="footer">
+      <p>Ваши сообщения сохраняются между сессиями</p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('joinButton').addEventListener('click', () => {
+      const username = document.getElementById('username').value.trim();
+      const room = document.getElementById('room').value.trim();
+      
+      if (username && room) {
+        localStorage.setItem('username', username);
+        localStorage.setItem('room', room);
+        window.location.href = `chat.html?room=${encodeURIComponent(room)}`;
+      } else {
+        alert('Пожалуйста, введите имя и название комнаты');
+      }
+    });
+    
+    window.onload = () => {
+      const savedUsername = localStorage.getItem('username') || '';
+      const savedRoom = localStorage.getItem('room') || '';
+      
+      if (savedUsername) document.getElementById('username').value = savedUsername;
+      if (savedRoom) document.getElementById('room').value = savedRoom;
+    };
+  </script>
+</body>
+</html>

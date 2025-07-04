@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Чат комнаты</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="styles.css?v=1">
+  <style>
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .room-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .room-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    
+    .user-count {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+    
+    .back-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .message {
+      max-width: 70%;
+      padding: 15px;
+      border-radius: 15px;
+      position: relative;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .self {
+      background: #dcf8c6;
+      align-self: flex-end;
+      border-bottom-right-radius: 5px;
+    }
+    
+    .other {
+      background: white;
+      border: 1px solid #e5e5ea;
+      align-self: flex-start;
+      border-bottom-left-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .system {
+      background: #f1f1f1;
+      align-self: center;
+      text-align: center;
+      padding: 10px;
+      font-size: 14px;
+      color: #777;
+    }
+    
+    .sender {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #4e54c8;
+    }
+    
+    .text {
+      line-height: 1.5;
+    }
+    
+    .time {
+      font-size: 12px;
+      color: #888;
+      text-align: right;
+      margin-top: 5px;
+    }
+    
+    .input-area {
+      display: flex;
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    
+    .message-input {
+      flex: 1;
+      padding: 14px 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 30px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    
+    .message-input:focus {
+      border-color: #8f94fb;
+      outline: none;
+    }
+    
+    .send-btn {
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      padding: 0 30px;
+      margin-left: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+    
+    .send-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .status-bar {
+      text-align: center;
+      padding: 10px;
+      font-size: 14px;
+      color: #666;
+      background: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="header">
+      <button class="back-btn" id="backButton">←</button>
+      <div class="room-info">
+        <div class="room-name" id="roomName">Комната</div>
+        <div class="user-count" id="userCount">1 участник</div>
+      </div>
+    </div>
+    
+    <div class="chat-messages" id="messages">
+      <div class="message system">
+        <div class="text">Добро пожаловать в чат!</div>
+      </div>
+    </div>
+    
+    <div class="input-area">
+      <input type="text" class="message-input" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+      <button class="send-btn" id="sendButton">Отправить</button>
+    </div>
+    
+    <div class="status-bar" id="status">Подключение к серверу...</div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ===== КОНФИГУРАЦИЯ =====
+    // Для локального тестирования оставьте SERVER_URL пустым
+    // Для доступа из интернета укажите ваш Ngrok URL
+    const SERVER_URL = 'https://7688-51-15-37-202.ngrok-free.app'; // Пример: 'https://abcd1234.ngrok.io'
+    
+    // Получаем параметры
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get('room') || 'Общий чат';
+    const username = localStorage.getItem('username') || 'Игрок';
+    
+    // Устанавливаем название комнаты
+    document.getElementById('roomName').textContent = room;
+    
+    // Подключаем Socket.IO
+    const socket = SERVER_URL 
+      ? io(SERVER_URL, { transports: ['websocket'] })
+      : io({ transports: ['websocket'] });
+    
+    // Элементы интерфейса
+    const messagesEl = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const backButton = document.getElementById('backButton');
+    const statusEl = document.getElementById('status');
+    const userCountEl = document.getElementById('userCount');
+    
+    // Переменные состояния
+    let userCount = 1;
+    
+    // Обработчики событий Socket.IO
+    socket.on('connect', () => {
+      statusEl.textContent = 'Подключено!';
+      socket.emit('joinRoom', { username, room });
+      socket.emit('join');
+    });
+    
+    socket.on('connect_error', (error) => {
+      statusEl.textContent = `Ошибка подключения: ${error.message}`;
+    });
+    
+    socket.on('roomHistory', (history) => {
+      messagesEl.innerHTML = '<div class="message system"><div class="text">Загружаем историю сообщений...</div></div>';
+      
+      setTimeout(() => {
+        messagesEl.innerHTML = '';
+        history.forEach(msg => addMessage(msg));
+        scrollToBottom();
+      }, 500);
+    });
+    
+    socket.on('message', (message) => {
+      addMessage(message);
+      scrollToBottom();
+    });
+    
+    socket.on('systemMessage', (message) => {
+      addSystemMessage(message.text, message.time);
+      scrollToBottom();
+    });
+    
+    // Функции
+    function addMessage(message) {
+      const isSelf = message.username === username;
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${isSelf ? 'self' : 'other'}`;
+      
+      messageEl.innerHTML = `
+        <div class="sender">${isSelf ? 'Вы' : message.username}</div>
+        <div class="text">${message.text}</div>
+        <div class="time">${message.time}</div>
+      `;
+      
+      messagesEl.appendChild(messageEl);
+    }
+    
+    function addSystemMessage(text, time) {
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message system';
+      
+      messageEl.innerHTML = `
+        <div class="text">${text}</div>
+        ${time ? `<div class="time">${time}</div>` : ''}
+      `;
+      
+      messagesEl.appendChild(messageEl);
+    }
+    
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (text) {
+        socket.emit('message', { text });
+        messageInput.value = '';
+      }
+      messageInput.focus();
+    }
+    
+    // Обработчики событий
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+    backButton.addEventListener('click', () => {
+      window.location.href = '/';
+    });
+    
+    // Фокус на поле ввода
+    window.onload = () => {
+      messageInput.focus();
+      addSystemMessage('Подключаемся к серверу...');
+    };
+  </script>
+</body>
+</html>
